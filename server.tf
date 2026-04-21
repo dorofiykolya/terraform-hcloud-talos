@@ -133,7 +133,7 @@ resource "hcloud_server" "control_planes" {
   network {
     network_id = hcloud_network_subnet.nodes.network_id
     ip         = each.value.ipv4_private
-    alias_ips  = [] # fix for https://github.com/hetznercloud/terraform-provider-hcloud/issues/650
+    alias_ips  = var.enable_alias_ip ? [local.control_plane_private_vip_ipv4] : []
   }
 
   depends_on = [
