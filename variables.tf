@@ -37,7 +37,7 @@ variable "cluster_api_host_private" {
   EOF
 
   validation {
-    condition = var.cluster_api_host_private == null || (
+    condition = var.cluster_api_host_private == null ? true : (
       var.cluster_api_host_private == trimspace(var.cluster_api_host_private) &&
       trimspace(var.cluster_api_host_private) != "" &&
       length(regexall("://", var.cluster_api_host_private)) == 0 &&
@@ -71,7 +71,7 @@ variable "cluster_api_host" {
   default     = null
 
   validation {
-    condition = var.cluster_api_host == null || (
+    condition = var.cluster_api_host == null ? true : (
       var.cluster_api_host == trimspace(var.cluster_api_host) &&
       trimspace(var.cluster_api_host) != "" &&
       length(regexall("://", var.cluster_api_host)) == 0 &&
