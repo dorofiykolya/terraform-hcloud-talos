@@ -44,10 +44,18 @@ locals {
           } : {}
         )
         network = {
+          # Hetzner Cloud x86 servers expose the public NIC on PCI bus
+          # 0000:01:00.0 and the private-network NIC on 0000:07:00.0. Talos
+          # 1.12+ uses predictable interface names (enp1s0/enp7s0), so the
+          # legacy eth0/eth1 names match nothing and any interface-scoped
+          # config (notably the control-plane VIP) silently never applies.
+          # Select the devices by their stable PCI bus path instead.
           interfaces = [
             {
-              interface = "eth0"
-              dhcp      = true
+              deviceSelector = {
+                busPath = "0000:01:00.0"
+              }
+              dhcp = true
               vip = var.enable_floating_ip ? {
                 ip = data.hcloud_floating_ip.control_plane_ipv4[0].ip_address
                 hcloud = {
@@ -56,8 +64,10 @@ locals {
               } : null
             },
             {
-              interface = "eth1"
-              dhcp      = true
+              deviceSelector = {
+                busPath = "0000:07:00.0"
+              }
+              dhcp = true
               vip = var.enable_alias_ip ? {
                 ip = local.control_plane_private_vip_ipv4
                 hcloud = {
