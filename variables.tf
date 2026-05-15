@@ -739,3 +739,19 @@ variable "extraManifests" {
   default     = null
   description = "Additional manifests URL applied during Talos bootstrap."
 }
+
+variable "health_check_enabled" {
+  type        = bool
+  default     = true
+  description = "Run the post-bootstrap talos_health probe against the Kubernetes API. Set false for an established cluster whose API is firewalled to private-only access — the probe would otherwise stall every apply on the unreachable public IP."
+}
+
+variable "health_check_endpoint_mode" {
+  type    = string
+  default = "public_ip"
+  validation {
+    condition     = contains(["public_ip", "private_ip"], var.health_check_endpoint_mode)
+    error_message = "Invalid health_check_endpoint_mode. Valid values: public_ip, private_ip."
+  }
+  description = "Which control-plane IP the talos_health probe targets."
+}

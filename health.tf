@@ -9,8 +9,12 @@
 #}
 
 data "http" "talos_health" {
-  count    = 1
-  url      = "https://${local.control_plane_public_ipv4_list[0]}:${local.api_port_k8s}/version"
+  # Post-bootstrap apply gate. On a cluster whose API is firewalled to
+  # private access only (e.g. Tailscale-only), the public-IP probe is
+  # unreachable and stalls every apply — set health_check_enabled=false
+  # to skip it once the cluster is established.
+  count    = var.health_check_enabled ? 1 : 0
+  url      = "https://${var.health_check_endpoint_mode == "private_ip" ? local.control_plane_private_ipv4_list[0] : local.control_plane_public_ipv4_list[0]}:${local.api_port_k8s}/version"
   insecure = true
   retry {
     attempts     = 60
