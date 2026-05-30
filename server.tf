@@ -85,6 +85,7 @@ locals {
       ipv4_private       = local.worker_private_ipv4_list[i - 1]
       labels             = local.worker_nodes_by_id[i].labels
       taints             = local.worker_nodes_by_id[i].taints
+      placement_group    = local.worker_nodes_by_id[i].placement_group
     }
   ]
 }
@@ -151,15 +152,19 @@ resource "hcloud_server" "control_planes" {
 }
 
 resource "hcloud_server" "workers" {
-  for_each           = { for worker in local.workers : worker.name => worker }
-  location           = data.hcloud_location.selected.name
-  name               = each.value.name
-  image              = each.value.image_id
-  iso                = each.value.iso_id
-  server_type        = each.value.server_type
-  user_data          = data.talos_machine_configuration.worker[each.value.name].machine_configuration
-  ssh_keys           = [hcloud_ssh_key.this.id]
-  placement_group_id = hcloud_placement_group.worker.id
+  for_each    = { for worker in local.workers : worker.name => worker }
+  location    = data.hcloud_location.selected.name
+  name        = each.value.name
+  image       = each.value.image_id
+  iso         = each.value.iso_id
+  server_type = each.value.server_type
+  user_data   = data.talos_machine_configuration.worker[each.value.name].machine_configuration
+  ssh_keys    = [hcloud_ssh_key.this.id]
+  placement_group_id = (
+    each.value.placement_group != null ?
+    hcloud_placement_group.worker_custom[each.value.placement_group].id :
+    hcloud_placement_group.worker.id
+  )
 
   labels = merge({
     "cluster"     = var.cluster_name,

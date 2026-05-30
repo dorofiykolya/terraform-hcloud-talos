@@ -356,10 +356,11 @@ variable "control_plane_allow_schedule" {
 
 variable "worker_nodes" {
   type = list(object({
-    id     = number
-    name   = optional(string)
-    type   = string
-    labels = optional(map(string), {})
+    id              = number
+    name            = optional(string)
+    type            = string
+    placement_group = optional(string)
+    labels          = optional(map(string), {})
     taints = optional(list(object({
       key    = string
       value  = string
@@ -375,9 +376,14 @@ variable "worker_nodes" {
     - id: Stable node id starting at 1 (used for naming and IP allocation).
     - name: Optional custom node name. If omitted, the module uses the default generated name.
     - type: Server type (cpx11, cpx12, cpx21, cpx22, cpx31, cpx32, cpx41, cpx42, cpx51, cpx52, cpx62, cax11, cax21, cax31, cax41, ccx13, ccx23, ccx33, ccx43, ccx53, ccx63, cx22, cx23, cx32, cx33, cx42, cx43, cx52, cx53)
+    - placement_group: Optional name of a dedicated spread placement group for this node. Nodes sharing the
+        same value are guaranteed to run on different physical hosts. If omitted, the node joins the shared
+        default worker placement group (backward-compatible behaviour). Use this to isolate a stateful pool
+        (e.g. databases) so its host-spread guarantee is independent of how the general worker pool scales,
+        and to keep each spread group below Hetzner's 10-server-per-group limit.
     - labels: Map of Kubernetes labels to apply to this node (default: {})
     - taints: List of Kubernetes taints to apply to this node (default: [])
-    
+
     Example:
     worker_nodes = [
       {
