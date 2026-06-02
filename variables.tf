@@ -186,6 +186,30 @@ variable "firewall_talos_api_source" {
   EOF
 }
 
+variable "firewall_skip_kube_api" {
+  type        = bool
+  default     = false
+  description = <<EOF
+    If true, the module SKIPS creating the public Kubernetes-API (tcp/6443)
+    firewall rule entirely — regardless of firewall_kube_api_source or
+    firewall_use_current_ip. Intended for clusters that publish the kube API
+    exclusively over a private network (e.g. tailnet subnet router →
+    network_ipv4_cidr). Default is false; existing callers keep their
+    public-allowlist behavior.
+  EOF
+}
+
+variable "firewall_skip_talos_api" {
+  type        = bool
+  default     = false
+  description = <<EOF
+    If true, the module SKIPS creating the public Talos-API (tcp/50000)
+    firewall rule entirely — regardless of firewall_talos_api_source or
+    firewall_use_current_ip. Default is false. Pair with a documented
+    Talos-over-tailnet break-glass procedure before enabling on production.
+  EOF
+}
+
 # Network
 variable "enable_floating_ip" {
   type        = bool

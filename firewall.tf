@@ -34,7 +34,12 @@ locals {
   ) : []
 
   base_firewall_rules = concat(
-    var.firewall_kube_api_source == null && !var.firewall_use_current_ip ? [] : [
+    # `firewall_skip_kube_api = true` short-circuits regardless of the
+    # source/use-current-ip wiring — purpose-built for clusters that
+    # publish the Kubernetes API exclusively over a private network
+    # (e.g. tailnet subnet router → 10.x.0.0/16). Default is false so
+    # existing callers keep their public-allowlist behavior.
+    var.firewall_skip_kube_api || (var.firewall_kube_api_source == null && !var.firewall_use_current_ip) ? [] : [
       {
         description = "Allow Incoming Requests to Kube API Server"
         direction   = "in"
@@ -43,7 +48,7 @@ locals {
         source_ips  = var.firewall_kube_api_source != null ? var.firewall_kube_api_source : local.current_ips
       }
     ],
-    var.firewall_talos_api_source == null && !var.firewall_use_current_ip ? [] : [
+    var.firewall_skip_talos_api || (var.firewall_talos_api_source == null && !var.firewall_use_current_ip) ? [] : [
       {
         description = "Allow Incoming Requests to Talos API Server"
         direction   = "in"
