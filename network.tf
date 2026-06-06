@@ -32,7 +32,11 @@ resource "hcloud_floating_ip" "control_plane_ipv4" {
   type              = "ipv4"
   home_location     = data.hcloud_location.selected.name
   description       = "Control Plane VIP"
-  delete_protection = false
+  # The control-plane VIP is delete-protected in prod (it is the cluster's kube
+  # endpoint; the k8s/helm providers resolve their host from it). Keep this true so
+  # terraform does not drift it back to false — a pending change here defers the
+  # data.hcloud_floating_ip read and makes the provider host "unknown" at plan time.
+  delete_protection = true
   labels = {
     "cluster" = var.cluster_name,
     "role"    = "control-plane"
