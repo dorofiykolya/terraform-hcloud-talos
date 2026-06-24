@@ -701,6 +701,19 @@ variable "cilium_enable_service_monitors" {
   EOF
 }
 
+variable "cilium_enable_egress_gateway" {
+  type        = bool
+  default     = false
+  description = <<EOF
+    If true, enables the Cilium Egress Gateway (egressGateway.enabled) and the
+    BPF masquerade it requires (bpf.masquerade=true). Lets a CiliumEgressGatewayPolicy
+    SNAT selected pod egress through a designated gateway node's IP — a stable
+    source IP for upstreams that IP-allowlist us, independent of pod scheduling.
+    NOTE: flipping bpf.masquerade is a cluster-wide datapath change; roll it in a
+    maintenance window. Requires kubeProxyReplacement=true (already the default).
+  EOF
+}
+
 variable "deploy_cilium" {
   type        = bool
   default     = true

@@ -30,8 +30,15 @@ data "helm_template" "cilium_default" {
       value = "true"
     },
     {
+      // Egress Gateway requires BPF masquerade. Flipping this is a cluster-wide
+      // datapath change, so it is gated behind cilium_enable_egress_gateway and
+      // stays "false" (legacy iptables masquerade) unless the gateway is enabled.
       name  = "bpf.masquerade"
-      value = "false"
+      value = var.cilium_enable_egress_gateway ? "true" : "false"
+    },
+    {
+      name  = "egressGateway.enabled"
+      value = var.cilium_enable_egress_gateway ? "true" : "false"
     },
     {
       // tailscale does not support XDP and therefore native fails. with best-effort we can fallthrough without failing!
