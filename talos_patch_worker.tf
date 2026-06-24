@@ -45,15 +45,24 @@ locals {
             }
           },
           # Egress workers (egress_floating_ip = true) get their dedicated
-          # Floating IP configured as an hcloud-managed VIP on the public NIC.
-          # Same busPath selector as the control-plane VIP (0000:01:00.0 — Talos
-          # 1.12+ predictable names; eth0 matches nothing, see
-          # talos_patch_control_plane.tf). This puts the Floating IP onto the
-          # node's interface so Cilium's Egress Gateway can SNAT matched pod
-          # egress to it, and Talos keeps the IP assigned to this node via the
-          # hcloud API. Non-egress workers get NO interfaces block at all — both
-          # NICs keep their default DHCP config (byte-for-byte unchanged → no
-          # machine-config churn on existing workers).
+          # Floating IP configured as a STATIC /32 address on the public NIC
+          # (busPath 0000:01:00.0 — Hetzner x86 predictable name; eth0 matches
+          # nothing, see talos_patch_control_plane.tf). NOT the Talos `vip`: the
+          # hcloud `vip` is driven by ETCD leader-election among CONTROL-PLANE
+          # nodes (Talos's shared-IP feature) — a worker runs no etcd, so a `vip`
+          # block there never elects and would silently never bind the IP. A
+          # static address puts the Floating IP on the interface unconditionally
+          # at boot; Hetzner routes the IP to this node via
+          # hcloud_floating_ip_assignment.worker_egress (network.tf), so Cilium's
+          # Egress Gateway can SNAT matched pod egress to it (set
+          # egressGateway.egressIP to this IP). `dhcp = true` is kept so the
+          # node still gets its primary public IP — the Floating IP is an
+          # ADDITIONAL address. Recreation-stable: the IP value never changes, TF
+          # re-binds the assignment, and the new node boots with the same static
+          # address. It is NOT live auto-failover — the single egress worker is
+          # the accepted SPOF of the dedicated-egress-anchor design. Non-egress
+          # workers get NO interfaces block (default DHCP, byte-for-byte
+          # unchanged → no machine-config churn).
           worker.egress_floating_ip ? {
             interfaces = [
               {
@@ -61,12 +70,9 @@ locals {
                   busPath = "0000:01:00.0"
                 }
                 dhcp = true
-                vip = {
-                  ip = hcloud_floating_ip.worker_egress_ipv4[worker.name].ip_address
-                  hcloud = {
-                    apiToken = var.hcloud_token
-                  }
-                }
+                addresses = [
+                  "${hcloud_floating_ip.worker_egress_ipv4[worker.name].ip_address}/32"
+                ]
               }
             ]
           } : {}

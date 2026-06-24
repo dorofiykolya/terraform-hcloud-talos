@@ -80,11 +80,12 @@ resource "hcloud_floating_ip" "worker_egress_ipv4" {
   }
 }
 
-# Initial assignment from Terraform so the Floating IP is bound to the worker
-# before Talos boots. Talos's hcloud-managed `vip` (talos_patch_worker.tf) then
-# owns failover/re-assignment thereafter; with a single egress worker both
-# converge on the same server, so there is no assignment flap (mirrors the
-# control-plane hcloud_floating_ip_assignment.this + vip combo).
+# Routes the Floating IP to the egress worker at the Hetzner layer (anti-spoof:
+# a server may only send from Floating IPs assigned to it). The IP is configured
+# locally on the worker's NIC as a static address (talos_patch_worker.tf), NOT a
+# Talos `vip` — the hcloud `vip` is etcd/control-plane-only and would not run on
+# a worker. On node recreation TF re-binds this assignment to the new server and
+# the new node boots with the same static address, so the egress IP is stable.
 resource "hcloud_floating_ip_assignment" "worker_egress" {
   for_each       = local.egress_floating_ip_workers
   floating_ip_id = hcloud_floating_ip.worker_egress_ipv4[each.key].id

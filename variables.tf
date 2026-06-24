@@ -403,15 +403,20 @@ variable "worker_nodes" {
     - labels: Map of Kubernetes labels to apply to this node (default: {})
     - taints: List of Kubernetes taints to apply to this node (default: [])
     - egress_floating_ip: When true, allocate a dedicated Hetzner Floating IP,
-      assign it to this worker, and configure it as a VIP on the worker's public
-      NIC (via the hcloud-managed Talos `vip`). Gives the node a stable public
-      source IP that survives node recreation/failover — intended as the SNAT
-      anchor for a Cilium Egress Gateway so an upstream (e.g. an aggregator that
-      IP-allowlists our outbound wallet calls) sees one fixed IP regardless of
-      worker scaling. Default false (no floating IP, no interface VIP — inert).
-      Cost: ~€1.30/mo per enabled worker. The machine config only takes effect on
-      a freshly-provisioned node (server user_data is in ignore_changes), so flip
-      this on at node-creation time rather than on an already-running worker.
+      route it to this worker (hcloud_floating_ip_assignment), and configure it
+      as a STATIC /32 address on the worker's public NIC. NOT the Talos `vip`
+      (that is etcd/control-plane-only and never elects on a worker) — a static
+      address binds the IP unconditionally at boot. Gives the node a stable
+      public source IP intended as the SNAT anchor for a Cilium Egress Gateway,
+      so an upstream (e.g. an aggregator that IP-allowlists our outbound wallet
+      calls) sees one fixed IP regardless of worker scaling. The IP value is
+      recreation-stable (survives node rebuild after the next apply); it is NOT
+      live auto-failover — a single egress worker is a SPOF by design. Default
+      false (no floating IP, no interface block — inert). Cost: ~€1.30/mo per
+      enabled worker. The machine config only takes effect on a freshly-
+      provisioned node (server user_data is in ignore_changes), so set this at
+      node-creation time, not on an already-running worker (the IP would be
+      assigned at the hcloud layer but never configured on the NIC).
     
     Example:
     worker_nodes = [
