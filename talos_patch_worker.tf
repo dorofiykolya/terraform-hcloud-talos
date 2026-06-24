@@ -85,7 +85,20 @@ locals {
             "net.core.somaxconn"          = "65535"
             "net.core.netdev_max_backlog" = "4096"
           },
-          var.sysctls_extra_args
+          var.sysctls_extra_args,
+          # Egress workers: Cilium's Egress Gateway forwards the SNATed egress on
+          # an asymmetric path; strict reverse-path filtering (rp_filter=1)
+          # SILENTLY DROPS that traffic (a documented Cilium egress-gateway
+          # requirement). Force loose RPF (2) on this dedicated egress node —
+          # safe here because the node only does egress SNAT. Baked into the
+          # machine config so the node boots correct (user_data is in
+          # ignore_changes → it can't be added to a running node without a
+          # recreate). conf.all=2 forces effective loose on every NIC (kernel
+          # uses max(conf.all, conf.<dev>); 2 is the numeric max).
+          worker.egress_floating_ip ? {
+            "net.ipv4.conf.all.rp_filter"     = "2"
+            "net.ipv4.conf.default.rp_filter" = "2"
+          } : {}
         )
         features = {
           hostDNS = {
