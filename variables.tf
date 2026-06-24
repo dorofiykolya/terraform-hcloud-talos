@@ -389,6 +389,7 @@ variable "worker_nodes" {
       value  = string
       effect = string
     })), [])
+    egress_floating_ip = optional(bool, false)
   }))
   default     = []
   description = <<EOF
@@ -401,6 +402,16 @@ variable "worker_nodes" {
     - type: Server type (cpx11, cpx12, cpx21, cpx22, cpx31, cpx32, cpx41, cpx42, cpx51, cpx52, cpx62, cax11, cax21, cax31, cax41, ccx13, ccx23, ccx33, ccx43, ccx53, ccx63, cx22, cx23, cx32, cx33, cx42, cx43, cx52, cx53)
     - labels: Map of Kubernetes labels to apply to this node (default: {})
     - taints: List of Kubernetes taints to apply to this node (default: [])
+    - egress_floating_ip: When true, allocate a dedicated Hetzner Floating IP,
+      assign it to this worker, and configure it as a VIP on the worker's public
+      NIC (via the hcloud-managed Talos `vip`). Gives the node a stable public
+      source IP that survives node recreation/failover — intended as the SNAT
+      anchor for a Cilium Egress Gateway so an upstream (e.g. an aggregator that
+      IP-allowlists our outbound wallet calls) sees one fixed IP regardless of
+      worker scaling. Default false (no floating IP, no interface VIP — inert).
+      Cost: ~€1.30/mo per enabled worker. The machine config only takes effect on
+      a freshly-provisioned node (server user_data is in ignore_changes), so flip
+      this on at node-creation time rather than on an already-running worker.
     
     Example:
     worker_nodes = [

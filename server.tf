@@ -85,6 +85,7 @@ locals {
       ipv4_private       = local.worker_private_ipv4_list[i - 1]
       labels             = local.worker_nodes_by_id[i].labels
       taints             = local.worker_nodes_by_id[i].taints
+      egress_floating_ip = local.worker_nodes_by_id[i].egress_floating_ip
     }
   ]
 }

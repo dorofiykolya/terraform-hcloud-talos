@@ -56,6 +56,44 @@ resource "hcloud_floating_ip_assignment" "this" {
   ]
 }
 
+locals {
+  # Workers that opted into a dedicated egress Floating IP (egress_floating_ip =
+  # true). Keyed by node name so the floating IP, its assignment, and the
+  # interface VIP in talos_patch_worker.tf all line up per node. Empty by default
+  # → none of the resources below are created (fully inert).
+  egress_floating_ip_workers = {
+    for worker in local.workers : worker.name => worker
+    if worker.egress_floating_ip
+  }
+}
+
+resource "hcloud_floating_ip" "worker_egress_ipv4" {
+  for_each          = local.egress_floating_ip_workers
+  name              = "${local.cluster_prefix}${each.key}-egress-ipv4"
+  type              = "ipv4"
+  home_location     = data.hcloud_location.selected.name
+  description       = "Worker egress VIP (${each.key})"
+  delete_protection = false
+  labels = {
+    "cluster" = var.cluster_name,
+    "role"    = "worker-egress"
+  }
+}
+
+# Initial assignment from Terraform so the Floating IP is bound to the worker
+# before Talos boots. Talos's hcloud-managed `vip` (talos_patch_worker.tf) then
+# owns failover/re-assignment thereafter; with a single egress worker both
+# converge on the same server, so there is no assignment flap (mirrors the
+# control-plane hcloud_floating_ip_assignment.this + vip combo).
+resource "hcloud_floating_ip_assignment" "worker_egress" {
+  for_each       = local.egress_floating_ip_workers
+  floating_ip_id = hcloud_floating_ip.worker_egress_ipv4[each.key].id
+  server_id      = hcloud_server.workers[each.key].id
+  depends_on = [
+    hcloud_server.workers,
+  ]
+}
+
 resource "hcloud_primary_ip" "control_plane_ipv4" {
   count         = local.control_plane_count
   name          = "${local.cluster_prefix}control-plane-${count.index + 1}-ipv4"

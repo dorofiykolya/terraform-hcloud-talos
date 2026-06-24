@@ -35,14 +35,42 @@ locals {
             }
           } : {}
         )
-        network = {
-          extraHostEntries = local.extra_host_entries
-          kubespan = {
-            enabled = var.enable_kube_span
-            advertiseKubernetesNetworks : false # Disabled because of cilium
-            mtu : 1370                          # Hcloud has a MTU of 1450 (KubeSpanMTU = UnderlyingMTU - 80)
-          }
-        }
+        network = merge(
+          {
+            extraHostEntries = local.extra_host_entries
+            kubespan = {
+              enabled = var.enable_kube_span
+              advertiseKubernetesNetworks : false # Disabled because of cilium
+              mtu : 1370                          # Hcloud has a MTU of 1450 (KubeSpanMTU = UnderlyingMTU - 80)
+            }
+          },
+          # Egress workers (egress_floating_ip = true) get their dedicated
+          # Floating IP configured as an hcloud-managed VIP on the public NIC.
+          # Same busPath selector as the control-plane VIP (0000:01:00.0 — Talos
+          # 1.12+ predictable names; eth0 matches nothing, see
+          # talos_patch_control_plane.tf). This puts the Floating IP onto the
+          # node's interface so Cilium's Egress Gateway can SNAT matched pod
+          # egress to it, and Talos keeps the IP assigned to this node via the
+          # hcloud API. Non-egress workers get NO interfaces block at all — both
+          # NICs keep their default DHCP config (byte-for-byte unchanged → no
+          # machine-config churn on existing workers).
+          worker.egress_floating_ip ? {
+            interfaces = [
+              {
+                deviceSelector = {
+                  busPath = "0000:01:00.0"
+                }
+                dhcp = true
+                vip = {
+                  ip = hcloud_floating_ip.worker_egress_ipv4[worker.name].ip_address
+                  hcloud = {
+                    apiToken = var.hcloud_token
+                  }
+                }
+              }
+            ]
+          } : {}
+        )
         kernel = {
           modules = var.kernel_modules_to_load
         }

@@ -48,3 +48,13 @@ output "talos_worker_ids" {
   description = "Server IDs of the hetzner talos workers machines"
   value       = { for id, server in hcloud_server.workers : id => server.id }
 }
+
+output "worker_egress_floating_ips" {
+  description = <<EOF
+    Map of worker node name => dedicated egress Floating IP address, for workers
+    with egress_floating_ip = true. This is the stable public source IP that a
+    Cilium Egress Gateway SNATs to (set as egressGateway.egressIP) and that an
+    upstream allowlists. Empty {} when no worker opted in.
+  EOF
+  value       = { for name, fip in hcloud_floating_ip.worker_egress_ipv4 : name => fip.ip_address }
+}
